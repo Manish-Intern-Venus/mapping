@@ -4,17 +4,17 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'NAJAR Digital Logbook',
   description:
-    'Industrial inspection, reporting, analytics, and unit access platform for plant operations.',
+    'Daily boiler and autoclave meter-photo reading logbook for assigned plant units.',
   openGraph: {
     title: 'NAJAR Digital Logbook',
     description:
-      'Industrial inspection, reporting, analytics, and unit access platform for plant operations.',
+      'Daily boiler and autoclave meter-photo reading logbook for assigned plant units.',
     images: [
       {
         url: '/og.png',
         width: 1200,
         height: 630,
-        alt: 'NAJAR Digital Logbook industrial inspection platform preview',
+        alt: 'NAJAR Digital Logbook meter reading platform preview',
       },
     ],
   },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'NAJAR Digital Logbook',
     description:
-      'Industrial inspection, reporting, analytics, and unit access platform for plant operations.',
+      'Daily boiler and autoclave meter-photo reading logbook for assigned plant units.',
     images: ['/og.png'],
   },
 };
