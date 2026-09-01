@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans-stack);
+  --font-mono: var(--font-mono-stack);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+body {
+  font-family: var(--font-sans-stack);
+}
+
+:root {
+  --font-sans-stack:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --font-mono-stack:
+    'SFMono-Regular', 'Roboto Mono', Consolas, 'Liberation Mono', monospace;
+  --background: #f4f1ea;
+  --foreground: #172326;
+  --card: #fffdf8;
+  --card-foreground: #172326;
+  --popover: #fffdf8;
+  --popover-foreground: #172326;
+  --primary: #0f766e;
+  --primary-foreground: #f8fffc;
+  --secondary: #e6eeeb;
+  --secondary-foreground: #1d3435;
+  --muted: #e9e5db;
+  --muted-foreground: #5f6b6b;
+  --accent: #f2b84b;
+  --accent-foreground: #2b2112;
+  --destructive: #b42318;
+  --border: #d6d2c8;
+  --input: #c7d0cd;
+  --ring: #0f9188;
+  --chart-1: #0f766e;
+  --chart-2: #2f9e60;
+  --chart-3: #f2b84b;
+  --chart-4: #c2410c;
+  --chart-5: #475569;
+  --radius: 0.5rem;
+  --sidebar: #ebe7dc;
+  --sidebar-foreground: #172326;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #f8fffc;
+  --sidebar-accent: #f2b84b;
+  --sidebar-accent-foreground: #2b2112;
+  --sidebar-border: #d6d2c8;
+  --sidebar-ring: #0f9188;
+}
+
+.dark {
+  --background: #151b1d;
+  --foreground: #f4f1ea;
+  --card: #20292b;
+  --card-foreground: #f4f1ea;
+  --popover: #20292b;
+  --popover-foreground: #f4f1ea;
+  --primary: #5eead4;
+  --primary-foreground: #0e2728;
+  --secondary: #263438;
+  --secondary-foreground: #edf7f4;
+  --muted: #2b3537;
+  --muted-foreground: #bac8c4;
+  --accent: #f7c65b;
+  --accent-foreground: #20170a;
+  --destructive: #f87171;
+  --border: rgb(255 255 255 / 14%);
+  --input: rgb(255 255 255 / 18%);
+  --ring: #5eead4;
+  --chart-1: #5eead4;
+  --chart-2: #86efac;
+  --chart-3: #f7c65b;
+  --chart-4: #fb923c;
+  --chart-5: #cbd5e1;
+  --sidebar: #1d2628;
+  --sidebar-foreground: #f4f1ea;
+  --sidebar-primary: #5eead4;
+  --sidebar-primary-foreground: #0e2728;
+  --sidebar-accent: #f7c65b;
+  --sidebar-accent-foreground: #20170a;
+  --sidebar-border: rgb(255 255 255 / 14%);
+  --sidebar-ring: #5eead4;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+.industrial-shell {
+  background:
+    linear-gradient(90deg, rgb(15 118 110 / 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(15 118 110 / 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, #f7f3eb 0%, #eef4f2 46%, #f7f6f1 100%);
+  background-size:
+    42px 42px,
+    42px 42px,
+    auto;
+}
+
+.plant-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.plant-graphic {
+  isolation: isolate;
+}
+
+.signal-line {
+  stroke-dasharray: 18 14;
+  animation: signal-flow 4.5s linear infinite;
+}
+
+@keyframes signal-flow {
+  to {
+    stroke-dashoffset: -96;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-line {
+    animation: none;
+  }
+}
