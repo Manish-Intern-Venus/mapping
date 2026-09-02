@@ -58,17 +58,17 @@ body {
     'Segoe UI', sans-serif;
   --font-mono-stack:
     'SFMono-Regular', 'Roboto Mono', Consolas, 'Liberation Mono', monospace;
-  --background: #f6f5f0;
+  --background: #f7f8f6;
   --foreground: #16211f;
-  --card: #fffefa;
+  --card: #ffffff;
   --card-foreground: #16211f;
-  --popover: #fffefa;
+  --popover: #ffffff;
   --popover-foreground: #16211f;
   --primary: #116149;
   --primary-foreground: #f9fffb;
-  --secondary: #e8ebe2;
+  --secondary: #ecefeb;
   --secondary-foreground: #1d2c28;
-  --muted: #e9e7df;
+  --muted: #ecefeb;
   --muted-foreground: #68716d;
   --accent: #d29b32;
   --accent-foreground: #261a07;
@@ -82,7 +82,7 @@ body {
   --chart-4: #b45309;
   --chart-5: #7c3d2c;
   --radius: 0.5rem;
-  --sidebar: #ebe9e1;
+  --sidebar: #ecefeb;
   --sidebar-foreground: #16211f;
   --sidebar-primary: #116149;
   --sidebar-primary-foreground: #f8fffc;
@@ -142,14 +142,4 @@ body {
   textarea {
     font: inherit;
   }
-}
-
-.logbook-shell {
-  background:
-    linear-gradient(90deg, rgb(22 33 31 / 0.045) 1px, transparent 1px),
-    linear-gradient(180deg, rgb(22 33 31 / 0.035) 1px, transparent 1px), #f6f5f0;
-  background-size:
-    36px 36px,
-    36px 36px,
-    auto;
 }

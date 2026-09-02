@@ -3,32 +3,22 @@
 import { type ChangeEvent, useMemo, useState } from 'react';
 import Image from 'next/image';
 import {
-  ArrowLeft,
   BarChart3,
-  Building2,
   Camera,
   Check,
-  CheckCircle2,
   CircleAlert,
-  ClipboardList,
   Download,
-  FileImage,
   FileSpreadsheet,
   Gauge,
-  ImageUp,
-  LogIn,
   LogOut,
-  PenLine,
   RotateCcw,
-  ShieldCheck,
+  Save,
   Table2,
   Upload,
-  UserRound,
   UsersRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -37,13 +27,7 @@ import {
 } from '@/components/ui/native-select';
 
 type Role = 'User' | 'Admin';
-type View =
-  | 'unitSelect'
-  | 'daily'
-  | 'saved'
-  | 'adminReports'
-  | 'adminUsers'
-  | 'adminAnalytics';
+type View = 'daily' | 'reports' | 'users' | 'analytics';
 type MeterKind = 'boiler' | 'autoclave';
 
 type User = {
@@ -123,17 +107,17 @@ const units: Unit[] = [
   {
     id: 'unit-1',
     name: 'Unit 01',
-    area: 'Boiler room and autoclave bay',
+    area: 'Boiler room',
   },
   {
     id: 'unit-2',
     name: 'Unit 02',
-    area: 'Packing utility room',
+    area: 'Utility room',
   },
   {
     id: 'unit-3',
     name: 'Unit 03',
-    area: 'Maintenance utility room',
+    area: 'Maintenance room',
   },
 ];
 
@@ -177,10 +161,10 @@ const recordsSeed: ReadingRecord[] = [
 ];
 
 const adminNav: Array<{ view: View; label: string; icon: LucideIcon }> = [
-  { view: 'daily', label: 'Entry', icon: ImageUp },
-  { view: 'adminReports', label: 'Reports', icon: Table2 },
-  { view: 'adminUsers', label: 'Users', icon: UsersRound },
-  { view: 'adminAnalytics', label: 'Analytics', icon: BarChart3 },
+  { view: 'daily', label: 'Entry', icon: Camera },
+  { view: 'reports', label: 'Reports', icon: Table2 },
+  { view: 'users', label: 'Users', icon: UsersRound },
+  { view: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 const emptyUpload: UploadState = {
@@ -198,7 +182,7 @@ const emptyForm = (): DailyForm => ({
 });
 
 const emptyFilters: ReportFilters = {
-  unitId: 'all',
+  unitId: 'unit-1',
   from: '2026-08-30',
   to: today,
 };
@@ -348,27 +332,25 @@ function pdfText(value: string, x: number, y: number, size = 10, bold = false) {
 }
 
 function buildPdf(records: ReadingRecord[], title: string) {
-  const rows = sortRecords(records).flatMap((record) => [
-    `${record.srNo}. ${formatDate(record.date)} | Sign: ${record.sign}`,
-    `Boiler: ${formatNumber(record.boilerReading)} | Consumption: ${formatNumber(
-      record.boilerConsumption,
-    )}`,
-    `Autoclave: ${formatNumber(
-      record.autoclaveReading,
-    )} | Consumption: ${formatNumber(record.autoclaveConsumption)}`,
-    '',
-  ]);
   const lines = [
     title,
     'NAJAR Digital Logbook',
     'sr. no. | date | boiler reading | boiler consumption | autoclave reading | autoclave consumption | sign',
     '',
-    ...rows,
+    ...sortRecords(records).flatMap((record) => [
+      `${record.srNo}. ${formatDate(record.date)} | Sign: ${record.sign}`,
+      `Boiler: ${formatNumber(record.boilerReading)} | Consumption: ${formatNumber(
+        record.boilerConsumption,
+      )}`,
+      `Autoclave: ${formatNumber(
+        record.autoclaveReading,
+      )} | Consumption: ${formatNumber(record.autoclaveConsumption)}`,
+      '',
+    ]),
   ].slice(0, 39);
   const stream = [
     'q 0.985 0.982 0.965 rg 0 0 595 842 re f Q',
-    'q 0.14 0.18 0.17 RG 52 762 491 0.8 re S Q',
-    '0.12 0.15 0.14 rg',
+    '0.10 0.12 0.12 rg',
     ...lines.map((line, index) =>
       pdfText(line, 52, 794 - index * 18, index === 0 ? 18 : 10, index < 2),
     ),
@@ -402,6 +384,10 @@ function buildPdf(records: ReadingRecord[], title: string) {
   return pdf;
 }
 
+function roleLabel(role: Role) {
+  return role === 'Admin' ? 'Admin' : 'User';
+}
+
 function AccessScreen({
   users,
   onLogin,
@@ -410,146 +396,48 @@ function AccessScreen({
   onLogin: (userId: string) => void;
 }) {
   return (
-    <main className="logbook-shell min-h-screen px-4 py-6 text-foreground sm:px-6">
-      <section className="mx-auto flex min-h-[calc(100vh-48px)] w-full max-w-5xl items-center">
-        <div className="grid w-full gap-5 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch">
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-            <span className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Gauge className="size-6" aria-hidden="true" />
+    <main className="min-h-screen bg-background px-4 py-5 text-foreground sm:px-6">
+      <section className="mx-auto grid min-h-[calc(100vh-40px)] w-full max-w-3xl content-center gap-5">
+        <header className="border-b border-border pb-4">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Gauge className="size-5" aria-hidden="true" />
             </span>
-            <h1 className="mt-5 text-4xl font-semibold tracking-normal text-foreground sm:text-5xl">
-              NAJAR Digital Logbook
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
-              Daily boiler and autoclave readings from meter photos.
-            </p>
-            <div className="mt-6 grid gap-3 rounded-lg border border-border bg-background p-4">
-              <div className="flex items-center gap-3">
-                <FileImage className="size-5 text-primary" aria-hidden="true" />
-                <span className="font-medium">Upload meter photo</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Table2 className="size-5 text-primary" aria-hidden="true" />
-                <span className="font-medium">Save one signed daily row</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <ShieldCheck
-                  className="size-5 text-primary"
-                  aria-hidden="true"
-                />
-                <span className="font-medium">Work only on assigned units</span>
-              </div>
+            <div>
+              <h1 className="text-2xl font-semibold">NAJAR Digital Logbook</h1>
+              <p className="text-sm text-muted-foreground">
+                Boiler aur autoclave daily reading
+              </p>
             </div>
-          </section>
-
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm sm:p-7">
-            <div className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                <LogIn className="size-5" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Access
-                </p>
-                <h2 className="text-2xl font-semibold">Choose profile</h2>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-3">
-              {users.map((user) => (
-                <button
-                  key={user.id}
-                  type="button"
-                  onClick={() => onLogin(user.id)}
-                  className="group flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-card text-primary ring-1 ring-border">
-                      <UserRound className="size-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-semibold">{user.name}</span>
-                      <span className="mt-1 block truncate text-sm text-muted-foreground">
-                        {user.role} - {user.email}
-                      </span>
-                    </span>
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="rounded-full bg-card group-hover:border-primary/60"
-                  >
-                    {user.role}
-                  </Badge>
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function UnitSelectionScreen({
-  user,
-  units,
-  onSelect,
-  onLogout,
-}: {
-  user: User;
-  units: Unit[];
-  onSelect: (unitId: string) => void;
-  onLogout: () => void;
-}) {
-  return (
-    <main className="logbook-shell min-h-screen px-4 py-6 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-5xl">
-        <header className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              {user.name}
-            </p>
-            <h1 className="text-3xl font-semibold tracking-normal">
-              Select unit
-            </h1>
           </div>
-          <Button variant="outline" onClick={onLogout}>
-            <LogOut className="size-4" aria-hidden="true" />
-            Sign out
-          </Button>
         </header>
 
-        {units.length === 0 ? (
-          <section className="mt-6 rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-            <CircleAlert className="mx-auto size-10 text-amber-700" />
-            <h2 className="mt-4 text-xl font-semibold">No unit assigned</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Ask admin to assign a unit before daily readings can be saved.
-            </p>
-          </section>
-        ) : (
-          <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {units.map((unit) => (
+        <section aria-labelledby="login-title">
+          <h2 id="login-title" className="text-base font-semibold">
+            Login profile
+          </h2>
+          <div className="mt-3 divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
+            {users.map((user) => (
               <button
-                key={unit.id}
+                key={user.id}
                 type="button"
-                onClick={() => onSelect(unit.id)}
-                className="rounded-lg border border-border bg-card p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-md"
+                onClick={() => onLogin(user.id)}
+                className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Building2 className="size-6 text-primary" aria-hidden="true" />
-                <h2 className="mt-4 text-2xl font-semibold">{unit.name}</h2>
-                <p className="mt-2 min-h-10 text-sm leading-6 text-muted-foreground">
-                  {unit.area}
-                </p>
-                <span className="mt-5 inline-flex items-center gap-2 font-medium text-primary">
-                  Open daily entry
-                  <Check className="size-4" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block font-medium">{user.name}</span>
+                  <span className="block truncate text-sm text-muted-foreground">
+                    {roleLabel(user.role)} - {user.email}
+                  </span>
+                </span>
+                <span className="rounded border border-border bg-background px-2 py-1 text-xs font-medium">
+                  {roleLabel(user.role)}
                 </span>
               </button>
             ))}
-          </section>
-        )}
-      </div>
+          </div>
+        </section>
+      </section>
     </main>
   );
 }
@@ -557,102 +445,53 @@ function UnitSelectionScreen({
 function AppShell({
   user,
   view,
-  currentUnit,
-  authorizedUnits,
   children,
   onNavigate,
-  onChangeUnit,
-  onSelectUnit,
   onLogout,
 }: {
   user: User;
   view: View;
-  currentUnit: Unit | null;
-  authorizedUnits: Unit[];
   children: React.ReactNode;
   onNavigate: (view: View) => void;
-  onChangeUnit: () => void;
-  onSelectUnit: (unitId: string) => void;
   onLogout: () => void;
 }) {
   const isAdmin = user.role === 'Admin';
 
   return (
-    <main className="logbook-shell min-h-screen text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Gauge className="size-5" aria-hidden="true" />
             </span>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">
-                NAJAR
-              </p>
-              <h1 className="truncate text-lg font-semibold">
-                Digital Logbook
-              </h1>
+            <div>
+              <p className="text-sm font-semibold">NAJAR Digital Logbook</p>
+              <p className="text-xs text-muted-foreground">{user.name}</p>
             </div>
           </div>
 
-          {isAdmin && (
-            <nav
-              className="flex gap-2 overflow-x-auto pb-1 lg:pb-0"
-              aria-label="Admin navigation"
-            >
-              {adminNav.map((item) => {
-                const Icon = item.icon;
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <nav className="flex flex-wrap gap-1" aria-label="Admin">
+                {adminNav.map((item) => {
+                  const Icon = item.icon;
 
-                return (
-                  <Button
-                    key={item.view}
-                    variant={view === item.view ? 'default' : 'ghost'}
-                    size="sm"
-                    className="h-9 px-3"
-                    onClick={() => onNavigate(item.view)}
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {item.label}
-                  </Button>
-                );
-              })}
-            </nav>
-          )}
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {currentUnit && (
-              <>
-                {isAdmin ? (
-                  <NativeSelect
-                    className="w-full sm:w-40"
-                    value={currentUnit.id}
-                    onChange={(event) => onSelectUnit(event.target.value)}
-                    aria-label="Current unit"
-                  >
-                    {authorizedUnits.map((unit) => (
-                      <NativeSelectOption key={unit.id} value={unit.id}>
-                        {unit.name}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                ) : (
-                  authorizedUnits.length > 1 && (
-                    <Button variant="outline" onClick={onChangeUnit}>
-                      <Building2 className="size-4" aria-hidden="true" />
-                      {currentUnit.name}
+                  return (
+                    <Button
+                      key={item.view}
+                      variant={view === item.view ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => onNavigate(item.view)}
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      {item.label}
                     </Button>
-                  )
-                )}
-              </>
+                  );
+                })}
+              </nav>
             )}
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
-              <UserRound className="size-4 text-muted-foreground" />
-              <span className="max-w-36 truncate">{user.name}</span>
-              <Badge variant="outline" className="rounded-full">
-                {user.role}
-              </Badge>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onLogout}>
+            <Button variant="outline" size="sm" onClick={onLogout}>
               <LogOut className="size-4" aria-hidden="true" />
               Sign out
             </Button>
@@ -660,246 +499,218 @@ function AppShell({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6">
+      <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
         {children}
       </div>
     </main>
   );
 }
 
-function UploadPanel({
+function MeterRow({
   kind,
-  title,
+  label,
   upload,
   previousReading,
   currentReading,
   consumption,
   onUpload,
   onReadingChange,
-  onClear,
 }: {
   kind: MeterKind;
-  title: string;
+  label: string;
   upload: UploadState;
   previousReading: number | null;
   currentReading: number | null;
   consumption: number | null;
   onUpload: (kind: MeterKind, event: ChangeEvent<HTMLInputElement>) => void;
   onReadingChange: (kind: MeterKind, value: string) => void;
-  onClear: (kind: MeterKind) => void;
 }) {
   const inputId = `${kind}-photo`;
-  const hasWarning = consumption !== null && consumption < 0;
+  const readingId = `${kind}-reading`;
+  const hasNegativeConsumption = consumption !== null && consumption < 0;
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Meter photo
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
-        </div>
-        <span className="flex size-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-          <Camera className="size-5" aria-hidden="true" />
-        </span>
+    <div className="grid gap-3 border-b border-border px-3 py-4 last:border-b-0 md:grid-cols-[150px_1.4fr_150px_120px_150px] md:items-center">
+      <div>
+        <p className="font-semibold">{label}</p>
+        <p className="text-xs text-muted-foreground">Meter display photo</p>
       </div>
 
-      <label
-        htmlFor={inputId}
-        className="mt-4 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border bg-background p-4 text-center transition hover:border-primary/60 hover:bg-primary/5"
-      >
-        {upload.previewUrl ? (
-          <Image
-            src={upload.previewUrl}
-            alt={`${title} uploaded meter preview`}
-            width={640}
-            height={360}
-            unoptimized
-            className="max-h-44 w-full rounded-md object-contain"
-          />
-        ) : (
-          <>
-            <span className="flex size-12 items-center justify-center rounded-lg bg-card text-primary ring-1 ring-border">
-              <Upload className="size-6" aria-hidden="true" />
-            </span>
-            <span className="mt-3 block font-medium">
-              Upload {title.toLowerCase()} photo
-            </span>
-            <span className="mt-1 block text-sm text-muted-foreground">
-              JPG or PNG meter display
-            </span>
-          </>
-        )}
-      </label>
-      <Input
-        id={inputId}
-        type="file"
-        className="sr-only"
-        accept="image/*"
-        onChange={(event) => onUpload(kind, event)}
-      />
-
-      {upload.fileName && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background p-3 text-sm">
-          <span className="min-w-0 truncate text-muted-foreground">
-            {upload.fileName}
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => onClear(kind)}>
-            <RotateCcw className="size-4" aria-hidden="true" />
-            Clear
-          </Button>
-        </div>
-      )}
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div>
         <label
-          className="space-y-1.5 sm:col-span-1"
-          htmlFor={`${kind}-reading`}
+          htmlFor={inputId}
+          className="flex min-h-28 cursor-pointer items-center gap-3 rounded-md border border-dashed border-border bg-background p-3 transition hover:border-primary focus-within:ring-2 focus-within:ring-ring"
         >
-          <span className="text-sm font-medium">Reading</span>
           <Input
-            id={`${kind}-reading`}
-            inputMode="decimal"
-            value={upload.extracted}
-            placeholder="Number"
-            onChange={(event) => onReadingChange(kind, event.target.value)}
-            aria-invalid={upload.extracted !== '' && currentReading === null}
+            id={inputId}
+            type="file"
+            className="sr-only"
+            accept="image/*"
+            onChange={(event) => onUpload(kind, event)}
           />
+          {upload.previewUrl ? (
+            <Image
+              src={upload.previewUrl}
+              alt={`${label} meter photo preview`}
+              width={160}
+              height={100}
+              unoptimized
+              className="h-20 w-28 rounded border border-border object-contain"
+            />
+          ) : (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-primary">
+              <Upload className="size-5" aria-hidden="true" />
+            </span>
+          )}
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">
+              {upload.fileName || 'Upload photo'}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              JPG/PNG meter image
+            </span>
+          </span>
         </label>
-        <div className="rounded-lg border border-border bg-background p-3">
-          <span className="block text-xs text-muted-foreground">Previous</span>
-          <span className="mt-1 block text-xl font-semibold">
-            {formatNumber(previousReading)}
-          </span>
-        </div>
-        <div
-          className={`rounded-lg border p-3 ${
-            hasWarning
-              ? 'border-amber-200 bg-amber-50 text-amber-950'
-              : 'border-border bg-background'
-          }`}
-        >
-          <span className="block text-xs text-muted-foreground">
-            Consumption
-          </span>
-          <span className="mt-1 block text-xl font-semibold">
-            {formatNumber(consumption)}
-          </span>
-        </div>
+        {upload.message && (
+          <p
+            className={`mt-2 text-sm ${
+              upload.status === 'error'
+                ? 'text-destructive'
+                : upload.status === 'manual'
+                  ? 'text-amber-800'
+                  : 'text-primary'
+            }`}
+            aria-live="polite"
+          >
+            {upload.message}
+          </p>
+        )}
       </div>
 
-      {upload.message && (
-        <p
-          className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-            upload.status === 'error'
-              ? 'bg-red-50 text-red-800'
-              : upload.status === 'manual'
-                ? 'bg-amber-50 text-amber-900'
-                : 'bg-emerald-50 text-emerald-800'
-          }`}
-          aria-live="polite"
-        >
-          {upload.message}
+      <label className="block" htmlFor={readingId}>
+        <span className="mb-1 block text-xs font-medium text-muted-foreground">
+          Reading
+        </span>
+        <Input
+          id={readingId}
+          inputMode="decimal"
+          value={upload.extracted}
+          placeholder="Number"
+          onChange={(event) => onReadingChange(kind, event.target.value)}
+          aria-invalid={upload.extracted !== '' && currentReading === null}
+        />
+      </label>
+
+      <div>
+        <p className="text-xs font-medium text-muted-foreground">Yesterday</p>
+        <p className="mt-1 text-lg font-semibold">
+          {formatNumber(previousReading)}
         </p>
-      )}
-    </section>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium text-muted-foreground">Consumption</p>
+        <p
+          className={`mt-1 text-lg font-semibold ${
+            hasNegativeConsumption ? 'text-amber-800' : ''
+          }`}
+        >
+          {formatNumber(consumption)}
+        </p>
+      </div>
+    </div>
   );
 }
 
-function SavedRow({ record }: { record: ReadingRecord }) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Saved row</p>
-          <h2 className="mt-1 text-2xl font-semibold">
-            {getUnit(record.unitId).name} - {formatDate(record.date)}
-          </h2>
-        </div>
-        <Badge
-          variant="outline"
-          className="h-7 rounded-full border-emerald-200 bg-emerald-50 px-3 text-emerald-800"
-        >
-          <CheckCircle2 className="size-4" aria-hidden="true" />
-          Signed
-        </Badge>
+function RecordsTable({ records }: { records: ReadingRecord[] }) {
+  if (records.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border bg-card p-5 text-center">
+        <CircleAlert className="mx-auto size-7 text-muted-foreground" />
+        <p className="mt-3 font-medium">No rows found</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Save a daily row or change the filters.
+        </p>
       </div>
+    );
+  }
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="py-3 pr-4 font-medium">sr. no.</th>
-              <th className="py-3 pr-4 font-medium">date</th>
-              <th className="py-3 pr-4 font-medium">boiler reading</th>
-              <th className="py-3 pr-4 font-medium">boiler consumption</th>
-              <th className="py-3 pr-4 font-medium">autoclave reading</th>
-              <th className="py-3 pr-4 font-medium">autoclave consumption</th>
-              <th className="py-3 font-medium">sign</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-border/70">
-              <td className="py-3 pr-4 font-medium">{record.srNo}</td>
-              <td className="py-3 pr-4">{formatDate(record.date)}</td>
-              <td className="py-3 pr-4 font-semibold">
+  return (
+    <div className="overflow-x-auto rounded-md border border-border bg-card">
+      <table className="w-full min-w-[820px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border bg-secondary text-left text-muted-foreground">
+            <th className="px-3 py-2 font-medium">sr. no.</th>
+            <th className="px-3 py-2 font-medium">date</th>
+            <th className="px-3 py-2 font-medium">boiler reading</th>
+            <th className="px-3 py-2 font-medium">boiler consumption</th>
+            <th className="px-3 py-2 font-medium">autoclave reading</th>
+            <th className="px-3 py-2 font-medium">autoclave consumption</th>
+            <th className="px-3 py-2 font-medium">sign</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {sortRecords(records).map((record) => (
+            <tr key={record.id}>
+              <td className="px-3 py-2 font-medium">{record.srNo}</td>
+              <td className="px-3 py-2">{formatDate(record.date)}</td>
+              <td className="px-3 py-2 font-semibold">
                 {formatNumber(record.boilerReading)}
               </td>
-              <td className="py-3 pr-4">
+              <td className="px-3 py-2">
                 {formatNumber(record.boilerConsumption)}
               </td>
-              <td className="py-3 pr-4 font-semibold">
+              <td className="px-3 py-2 font-semibold">
                 {formatNumber(record.autoclaveReading)}
               </td>
-              <td className="py-3 pr-4">
+              <td className="px-3 py-2">
                 {formatNumber(record.autoclaveConsumption)}
               </td>
-              <td className="py-3 font-medium">{record.sign}</td>
+              <td className="px-3 py-2 font-medium">{record.sign}</td>
             </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function DailyEntryView({
   user,
+  authorizedUnits,
   unit,
   records,
   form,
   message,
   lastSaved,
+  onUnitChange,
   onDateChange,
   onUpload,
   onReadingChange,
-  onClearUpload,
   onSave,
   onReset,
-  onChangeUnit,
 }: {
   user: User;
+  authorizedUnits: Unit[];
   unit: Unit | null;
   records: ReadingRecord[];
   form: DailyForm;
   message: string;
   lastSaved: ReadingRecord | null;
+  onUnitChange: (unitId: string) => void;
   onDateChange: (date: string) => void;
   onUpload: (kind: MeterKind, event: ChangeEvent<HTMLInputElement>) => void;
   onReadingChange: (kind: MeterKind, value: string) => void;
-  onClearUpload: (kind: MeterKind) => void;
   onSave: () => void;
   onReset: () => void;
-  onChangeUnit: () => void;
 }) {
   if (!unit) {
     return (
-      <section className="rounded-lg border border-border bg-card p-6 text-center shadow-sm">
-        <CircleAlert className="mx-auto size-10 text-amber-700" />
-        <h2 className="mt-4 text-xl font-semibold">No unit assigned</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Ask admin to assign a unit before daily readings can be saved.
+      <section className="rounded-md border border-border bg-card p-5 text-center">
+        <CircleAlert className="mx-auto size-8 text-amber-700" />
+        <h1 className="mt-3 text-lg font-semibold">No unit assigned</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Admin se unit assign karwana hoga.
         </p>
       </section>
     );
@@ -917,195 +728,122 @@ function DailyEntryView({
     autoclaveReading,
   );
   const canSave = boilerReading !== null && autoclaveReading !== null;
+  const savedRows = lastSaved ? [lastSaved] : [];
 
   return (
-    <section className="grid gap-5">
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className="h-7 rounded-full bg-background"
-              >
-                {unit.name}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="h-7 rounded-full bg-background"
-              >
-                <PenLine className="size-4" aria-hidden="true" />
-                Sign: {user.name}
-              </Badge>
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-normal sm:text-4xl">
-              Daily meter entry
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Upload boiler and autoclave meter photos, check the numbers, then
-              save today row.
-            </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-[180px_auto] lg:min-w-[360px]">
-            <label className="space-y-1.5" htmlFor="reading-date">
-              <span className="text-sm font-medium">Date</span>
-              <Input
-                id="reading-date"
-                type="date"
-                value={form.date}
-                onChange={(event) => onDateChange(event.target.value)}
-              />
-            </label>
-            <div className="flex items-end gap-2">
-              <Button variant="outline" className="h-8" onClick={onReset}>
-                <RotateCcw className="size-4" aria-hidden="true" />
-                Reset
-              </Button>
-              <Button
-                className="h-8"
-                onClick={onChangeUnit}
-                disabled={
-                  user.role !== 'Admin' && user.assignedUnitIds.length < 2
-                }
-              >
-                <Building2 className="size-4" aria-hidden="true" />
-                Unit
-              </Button>
-            </div>
-          </div>
+    <section className="grid gap-4">
+      <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Aaj ki reading</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Photo upload karo, number check karo, row save karo.
+          </p>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-[160px_160px_auto] sm:items-end">
+          <label className="block" htmlFor="unit-select">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+              Unit
+            </span>
+            <NativeSelect
+              id="unit-select"
+              value={unit.id}
+              onChange={(event) => onUnitChange(event.target.value)}
+              disabled={authorizedUnits.length < 2 && user.role !== 'Admin'}
+            >
+              {authorizedUnits.map((assignedUnit) => (
+                <NativeSelectOption
+                  key={assignedUnit.id}
+                  value={assignedUnit.id}
+                >
+                  {assignedUnit.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
+
+          <label className="block" htmlFor="reading-date">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+              Date
+            </span>
+            <Input
+              id="reading-date"
+              type="date"
+              value={form.date}
+              onChange={(event) => onDateChange(event.target.value)}
+            />
+          </label>
+
+          <Button variant="outline" onClick={onReset}>
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Reset
+          </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <UploadPanel
+      <section
+        className="overflow-hidden rounded-md border border-border bg-card"
+        aria-label="Daily meter readings"
+      >
+        <div className="hidden border-b border-border bg-secondary px-3 py-2 text-xs font-medium uppercase text-muted-foreground md:grid md:grid-cols-[150px_1.4fr_150px_120px_150px]">
+          <span>Meter</span>
+          <span>Photo</span>
+          <span>Reading</span>
+          <span>Yesterday</span>
+          <span>Consumption</span>
+        </div>
+        <MeterRow
           kind="boiler"
-          title="Boiler"
+          label="Boiler"
           upload={form.boiler}
           previousReading={previous?.boilerReading ?? null}
           currentReading={boilerReading}
           consumption={boilerConsumption}
           onUpload={onUpload}
           onReadingChange={onReadingChange}
-          onClear={onClearUpload}
         />
-        <UploadPanel
+        <MeterRow
           kind="autoclave"
-          title="Autoclave"
+          label="Autoclave"
           upload={form.autoclave}
           previousReading={previous?.autoclaveReading ?? null}
           currentReading={autoclaveReading}
           consumption={autoclaveConsumption}
           onUpload={onUpload}
           onReadingChange={onReadingChange}
-          onClear={onClearUpload}
         />
-      </div>
+      </section>
 
-      <section className="grid gap-4 rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border border-border bg-background p-3">
-            <p className="text-xs text-muted-foreground">Boiler reading</p>
-            <p className="mt-1 text-2xl font-semibold">
-              {formatNumber(boilerReading)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-background p-3">
-            <p className="text-xs text-muted-foreground">Boiler consumption</p>
-            <p className="mt-1 text-2xl font-semibold">
-              {formatNumber(boilerConsumption)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-background p-3">
-            <p className="text-xs text-muted-foreground">Autoclave reading</p>
-            <p className="mt-1 text-2xl font-semibold">
-              {formatNumber(autoclaveReading)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-background p-3">
-            <p className="text-xs text-muted-foreground">Sign</p>
-            <p className="mt-1 truncate text-2xl font-semibold">{user.name}</p>
-          </div>
-        </div>
-        <Button
-          className="h-11 px-5 text-base"
-          disabled={!canSave}
-          onClick={onSave}
-        >
-          <ClipboardList className="size-5" aria-hidden="true" />
+      <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm">
+          Sign: <span className="font-semibold">{user.name}</span>
+        </p>
+        <Button className="sm:min-w-36" disabled={!canSave} onClick={onSave}>
+          <Save className="size-4" aria-hidden="true" />
           Save row
         </Button>
-      </section>
+      </div>
 
       {message && (
         <p
-          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          className="rounded-md border border-border bg-card px-3 py-2 text-sm text-primary"
           aria-live="polite"
         >
           {message}
         </p>
       )}
 
-      {lastSaved && <SavedRow record={lastSaved} />}
+      {lastSaved && (
+        <section className="grid gap-2">
+          <h2 className="text-base font-semibold">Saved row</h2>
+          <RecordsTable records={savedRows} />
+        </section>
+      )}
     </section>
   );
 }
 
-function RecordsTable({ records }: { records: ReadingRecord[] }) {
-  if (records.length === 0) {
-    return (
-      <section className="rounded-lg border border-dashed border-border bg-card p-6 text-center shadow-sm">
-        <ClipboardList className="mx-auto size-10 text-muted-foreground" />
-        <h2 className="mt-4 text-xl font-semibold">No rows found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Change filters or save a daily reading row.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/70 text-left text-muted-foreground">
-              <th className="px-4 py-3 font-medium">sr. no.</th>
-              <th className="px-4 py-3 font-medium">date</th>
-              <th className="px-4 py-3 font-medium">boiler reading</th>
-              <th className="px-4 py-3 font-medium">boiler consumption</th>
-              <th className="px-4 py-3 font-medium">autoclave reading</th>
-              <th className="px-4 py-3 font-medium">autoclave consumption</th>
-              <th className="px-4 py-3 font-medium">sign</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {sortRecords(records).map((record) => (
-              <tr key={record.id} className="bg-card">
-                <td className="px-4 py-3 font-medium">{record.srNo}</td>
-                <td className="px-4 py-3">{formatDate(record.date)}</td>
-                <td className="px-4 py-3 font-semibold">
-                  {formatNumber(record.boilerReading)}
-                </td>
-                <td className="px-4 py-3">
-                  {formatNumber(record.boilerConsumption)}
-                </td>
-                <td className="px-4 py-3 font-semibold">
-                  {formatNumber(record.autoclaveReading)}
-                </td>
-                <td className="px-4 py-3">
-                  {formatNumber(record.autoclaveConsumption)}
-                </td>
-                <td className="px-4 py-3 font-medium">{record.sign}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function AdminReportsView({
+function ReportsView({
   records,
   filters,
   onFilter,
@@ -1119,75 +857,73 @@ function AdminReportsView({
   onExportPdf: () => void;
 }) {
   return (
-    <section className="grid gap-5">
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">
-              Admin reports
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              Daily logbook rows
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {filters.unitId === 'all'
-                ? 'Showing all units'
-                : `Showing ${getUnit(filters.unitId).name}`}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={onExportCsv}>
-              <FileSpreadsheet className="size-4" aria-hidden="true" />
-              Excel CSV
-            </Button>
-            <Button variant="outline" onClick={onExportPdf}>
-              <Download className="size-4" aria-hidden="true" />
-              PDF
-            </Button>
-          </div>
+    <section className="grid gap-4">
+      <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Reports</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {getUnit(filters.unitId).name} saved rows.
+          </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={onExportCsv}>
+            <FileSpreadsheet className="size-4" aria-hidden="true" />
+            CSV
+          </Button>
+          <Button variant="outline" onClick={onExportPdf}>
+            <Download className="size-4" aria-hidden="true" />
+            PDF
+          </Button>
+        </div>
+      </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Unit</span>
-            <NativeSelect
-              className="w-full"
-              value={filters.unitId}
-              onChange={(event) =>
-                onFilter({ ...filters, unitId: event.target.value })
-              }
-            >
-              <NativeSelectOption value="all">All units</NativeSelectOption>
-              {units.map((unit) => (
-                <NativeSelectOption key={unit.id} value={unit.id}>
-                  {unit.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-          <label className="space-y-1.5" htmlFor="from-date">
-            <span className="text-sm font-medium">From</span>
-            <Input
-              id="from-date"
-              type="date"
-              value={filters.from}
-              onChange={(event) =>
-                onFilter({ ...filters, from: event.target.value })
-              }
-            />
-          </label>
-          <label className="space-y-1.5" htmlFor="to-date">
-            <span className="text-sm font-medium">To</span>
-            <Input
-              id="to-date"
-              type="date"
-              value={filters.to}
-              onChange={(event) =>
-                onFilter({ ...filters, to: event.target.value })
-              }
-            />
-          </label>
-        </div>
+      <div className="grid gap-2 rounded-md border border-border bg-card p-3 md:grid-cols-3">
+        <label className="block" htmlFor="report-unit">
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">
+            Unit
+          </span>
+          <NativeSelect
+            id="report-unit"
+            value={filters.unitId}
+            onChange={(event) =>
+              onFilter({ ...filters, unitId: event.target.value })
+            }
+          >
+            {units.map((unit) => (
+              <NativeSelectOption key={unit.id} value={unit.id}>
+                {unit.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
+
+        <label className="block" htmlFor="from-date">
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">
+            From
+          </span>
+          <Input
+            id="from-date"
+            type="date"
+            value={filters.from}
+            onChange={(event) =>
+              onFilter({ ...filters, from: event.target.value })
+            }
+          />
+        </label>
+
+        <label className="block" htmlFor="to-date">
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">
+            To
+          </span>
+          <Input
+            id="to-date"
+            type="date"
+            value={filters.to}
+            onChange={(event) =>
+              onFilter({ ...filters, to: event.target.value })
+            }
+          />
+        </label>
       </div>
 
       <RecordsTable records={records} />
@@ -1195,7 +931,7 @@ function AdminReportsView({
   );
 }
 
-function AdminUsersView({
+function UsersView({
   users,
   onToggleAssignment,
 }: {
@@ -1203,80 +939,71 @@ function AdminUsersView({
   onToggleAssignment: (userId: string, unitId: string) => void;
 }) {
   return (
-    <section className="grid gap-5">
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-        <p className="text-sm font-medium text-muted-foreground">Admin users</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-          Unit assignment
-        </h1>
+    <section className="grid gap-4">
+      <div className="border-b border-border pb-4">
+        <h1 className="text-2xl font-semibold">Users</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          User ko unit assign karo.
+        </p>
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/70 text-left text-muted-foreground">
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Role</th>
-                {units.map((unit) => (
-                  <th key={unit.id} className="px-4 py-3 font-medium">
-                    {unit.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {users.map((managedUser) => (
-                <tr key={managedUser.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold">{managedUser.name}</p>
-                    <p className="text-muted-foreground">{managedUser.email}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline" className="rounded-full">
-                      {managedUser.role}
-                    </Badge>
-                  </td>
-                  {units.map((unit) => {
-                    const assigned =
-                      managedUser.role === 'Admin' ||
-                      managedUser.assignedUnitIds.includes(unit.id);
-
-                    return (
-                      <td key={unit.id} className="px-4 py-3">
-                        <Button
-                          variant={assigned ? 'default' : 'outline'}
-                          size="sm"
-                          disabled={managedUser.role === 'Admin'}
-                          onClick={() =>
-                            onToggleAssignment(managedUser.id, unit.id)
-                          }
-                        >
-                          {assigned ? (
-                            <Check className="size-4" aria-hidden="true" />
-                          ) : (
-                            <CircleAlert
-                              className="size-4"
-                              aria-hidden="true"
-                            />
-                          )}
-                          {assigned ? 'Assigned' : 'No access'}
-                        </Button>
-                      </td>
-                    );
-                  })}
-                </tr>
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border bg-secondary text-left text-muted-foreground">
+              <th className="px-3 py-2 font-medium">User</th>
+              <th className="px-3 py-2 font-medium">Role</th>
+              {units.map((unit) => (
+                <th key={unit.id} className="px-3 py-2 font-medium">
+                  {unit.name}
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {users.map((managedUser) => (
+              <tr key={managedUser.id}>
+                <td className="px-3 py-2">
+                  <p className="font-semibold">{managedUser.name}</p>
+                  <p className="text-muted-foreground">{managedUser.email}</p>
+                </td>
+                <td className="px-3 py-2">{roleLabel(managedUser.role)}</td>
+                {units.map((unit) => {
+                  const assigned =
+                    managedUser.role === 'Admin' ||
+                    managedUser.assignedUnitIds.includes(unit.id);
+
+                  return (
+                    <td key={unit.id} className="px-3 py-2">
+                      <Button
+                        variant={assigned ? 'default' : 'outline'}
+                        size="sm"
+                        disabled={managedUser.role === 'Admin'}
+                        onClick={() =>
+                          onToggleAssignment(managedUser.id, unit.id)
+                        }
+                      >
+                        {assigned ? (
+                          <Check className="size-4" aria-hidden="true" />
+                        ) : (
+                          <CircleAlert className="size-4" aria-hidden="true" />
+                        )}
+                        {assigned ? 'Assigned' : 'No access'}
+                      </Button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
 
-function AdminAnalyticsView({ records }: { records: ReadingRecord[] }) {
-  const unitSummaries = units.map((unit) => {
+function AnalyticsView({ records }: { records: ReadingRecord[] }) {
+  const rows = units.map((unit) => {
     const unitRecords = sortRecords(
       records.filter((record) => record.unitId === unit.id),
     );
@@ -1290,78 +1017,44 @@ function AdminAnalyticsView({ records }: { records: ReadingRecord[] }) {
       0,
     );
 
-    return {
-      unit,
-      latest,
-      boilerTotal,
-      autoclaveTotal,
-    };
+    return { unit, latest, boilerTotal, autoclaveTotal };
   });
-  const maxTotal = Math.max(
-    1,
-    ...unitSummaries.flatMap((item) => [item.boilerTotal, item.autoclaveTotal]),
-  );
 
   return (
-    <section className="grid gap-5">
-      <div className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5">
-        <p className="text-sm font-medium text-muted-foreground">
-          Admin analytics
+    <section className="grid gap-4">
+      <div className="border-b border-border pb-4">
+        <h1 className="text-2xl font-semibold">Analytics</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Unit wise consumption summary.
         </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-          Consumption by unit
-        </h1>
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        {unitSummaries.map((item) => (
-          <article
-            key={item.unit.id}
-            className="rounded-lg border border-border bg-card p-4 shadow-sm sm:p-5"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-semibold">{item.unit.name}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.latest
-                    ? `Latest: ${formatDate(item.latest.date)}`
-                    : 'No record yet'}
-                </p>
-              </div>
-              <Building2 className="size-6 text-primary" aria-hidden="true" />
-            </div>
-
-            <div className="mt-5 grid gap-4">
-              <div>
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium">Boiler consumption</span>
-                  <span>{formatNumber(item.boilerTotal)}</span>
-                </div>
-                <div className="mt-2 h-3 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${(item.boilerTotal / maxTotal) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium">Autoclave consumption</span>
-                  <span>{formatNumber(item.autoclaveTotal)}</span>
-                </div>
-                <div className="mt-2 h-3 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{
-                      width: `${(item.autoclaveTotal / maxTotal) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </article>
-        ))}
-      </section>
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
+        <table className="w-full min-w-[680px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border bg-secondary text-left text-muted-foreground">
+              <th className="px-3 py-2 font-medium">Unit</th>
+              <th className="px-3 py-2 font-medium">Latest date</th>
+              <th className="px-3 py-2 font-medium">Boiler consumption</th>
+              <th className="px-3 py-2 font-medium">Autoclave consumption</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => (
+              <tr key={row.unit.id}>
+                <td className="px-3 py-2 font-semibold">{row.unit.name}</td>
+                <td className="px-3 py-2">
+                  {row.latest ? formatDate(row.latest.date) : '-'}
+                </td>
+                <td className="px-3 py-2">{formatNumber(row.boilerTotal)}</td>
+                <td className="px-3 py-2">
+                  {formatNumber(row.autoclaveTotal)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -1399,7 +1092,7 @@ export default function Home() {
   const filteredRecords = sortRecords(
     records.filter((record) => {
       return (
-        (filters.unitId === 'all' || record.unitId === filters.unitId) &&
+        record.unitId === filters.unitId &&
         record.date >= filters.from &&
         record.date <= filters.to
       );
@@ -1423,13 +1116,7 @@ export default function Home() {
     setForm(emptyForm());
     setMessage('');
     setLastSaved(null);
-
-    if (user.role === 'Admin') {
-      setView('adminReports');
-      return;
-    }
-
-    setView(userUnits.length > 1 ? 'unitSelect' : 'daily');
+    setView(user.role === 'Admin' ? 'reports' : 'daily');
   }
 
   function logout() {
@@ -1457,7 +1144,7 @@ export default function Home() {
           ...emptyUpload,
           fileName: file.name,
           status: 'error',
-          message: 'Upload an image file.',
+          message: 'Image file upload karo.',
         },
       }));
       return;
@@ -1469,7 +1156,7 @@ export default function Home() {
         ...emptyUpload,
         fileName: file.name,
         status: 'reading',
-        message: 'Reading photo...',
+        message: 'Photo read ho rahi hai...',
       },
     }));
 
@@ -1486,11 +1173,11 @@ export default function Home() {
             extracted,
             status: extracted ? 'ready' : 'manual',
             message: extracted
-              ? 'Reading filled. Check it before saving.'
-              : 'Number not found. Enter the reading after checking photo.',
+              ? 'Number filled. Save se pehle check karo.'
+              : 'Number nahi mila. Photo dekhkar reading enter karo.',
           },
         }));
-      }, 350);
+      }, 250);
     } catch {
       setForm((current) => ({
         ...current,
@@ -1498,7 +1185,7 @@ export default function Home() {
           ...emptyUpload,
           fileName: file.name,
           status: 'error',
-          message: 'Photo could not be read.',
+          message: 'Photo read nahi ho payi.',
         },
       }));
     }
@@ -1514,16 +1201,9 @@ export default function Home() {
         extracted: cleanedValue,
         status: cleanedValue ? 'ready' : current[kind].status,
         message: cleanedValue
-          ? 'Reading ready. Check it before saving.'
+          ? 'Reading ready. Save se pehle check karo.'
           : current[kind].message,
       },
-    }));
-  }
-
-  function clearUpload(kind: MeterKind) {
-    setForm((current) => ({
-      ...current,
-      [kind]: { ...emptyUpload },
     }));
   }
 
@@ -1536,7 +1216,7 @@ export default function Home() {
     const autoclaveReading = parseReading(form.autoclave.extracted);
 
     if (boilerReading === null || autoclaveReading === null) {
-      setMessage('Enter both readings before saving.');
+      setMessage('Boiler aur autoclave dono reading enter karo.');
       return;
     }
 
@@ -1573,12 +1253,7 @@ export default function Home() {
         : [nextRecord, ...current],
     );
     setLastSaved(nextRecord);
-    setMessage(
-      existing
-        ? 'Today row updated with your name.'
-        : 'Today row saved with your name.',
-    );
-    setView('saved');
+    setMessage(existing ? 'Row update ho gayi.' : 'Row save ho gayi.');
   }
 
   function resetForm() {
@@ -1614,7 +1289,7 @@ export default function Home() {
         buildCsv(filteredRecords),
       )
     ) {
-      setMessage('Excel CSV exported.');
+      setMessage('CSV export ho gaya.');
     }
   }
 
@@ -1626,7 +1301,7 @@ export default function Home() {
         buildPdf(filteredRecords, 'Daily Reading Report'),
       )
     ) {
-      setMessage('PDF exported.');
+      setMessage('PDF export ho gaya.');
     }
   }
 
@@ -1634,72 +1309,45 @@ export default function Home() {
     return <AccessScreen users={users} onLogin={login} />;
   }
 
-  if (view === 'unitSelect') {
-    return (
-      <UnitSelectionScreen
-        user={sessionUser}
-        units={authorizedUnits}
-        onSelect={(unitId) => {
-          setSelectedUnitId(unitId);
-          setView('daily');
-        }}
-        onLogout={logout}
-      />
-    );
-  }
-
   return (
     <AppShell
       user={sessionUser}
       view={view}
-      currentUnit={currentUnit}
-      authorizedUnits={authorizedUnits}
       onNavigate={(nextView) => {
         setMessage('');
         setView(nextView);
       }}
-      onChangeUnit={() => setView('unitSelect')}
-      onSelectUnit={(unitId) => setSelectedUnitId(unitId)}
       onLogout={logout}
     >
       {sessionUser.role === 'Admin' && message && (
         <p
-          className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          className="mb-4 rounded-md border border-border bg-card px-3 py-2 text-sm text-primary"
           aria-live="polite"
         >
           {message}
         </p>
       )}
 
-      {sessionUser.role === 'User' && view === 'saved' && lastSaved && (
-        <div className="mb-4">
-          <Button variant="outline" onClick={() => setView('daily')}>
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            New entry
-          </Button>
-        </div>
-      )}
-
-      {(view === 'daily' || view === 'saved') && (
+      {view === 'daily' && (
         <DailyEntryView
           user={sessionUser}
+          authorizedUnits={authorizedUnits}
           unit={currentUnit}
           records={records}
           form={form}
           message={message}
           lastSaved={lastSaved}
+          onUnitChange={setSelectedUnitId}
           onDateChange={(date) => setForm((current) => ({ ...current, date }))}
           onUpload={handleUpload}
           onReadingChange={changeReading}
-          onClearUpload={clearUpload}
           onSave={saveRecord}
           onReset={resetForm}
-          onChangeUnit={() => setView('unitSelect')}
         />
       )}
 
-      {sessionUser.role === 'Admin' && view === 'adminReports' && (
-        <AdminReportsView
+      {sessionUser.role === 'Admin' && view === 'reports' && (
+        <ReportsView
           records={filteredRecords}
           filters={filters}
           onFilter={setFilters}
@@ -1708,12 +1356,12 @@ export default function Home() {
         />
       )}
 
-      {sessionUser.role === 'Admin' && view === 'adminUsers' && (
-        <AdminUsersView users={users} onToggleAssignment={toggleAssignment} />
+      {sessionUser.role === 'Admin' && view === 'users' && (
+        <UsersView users={users} onToggleAssignment={toggleAssignment} />
       )}
 
-      {sessionUser.role === 'Admin' && view === 'adminAnalytics' && (
-        <AdminAnalyticsView records={records} />
+      {sessionUser.role === 'Admin' && view === 'analytics' && (
+        <AnalyticsView records={records} />
       )}
     </AppShell>
   );

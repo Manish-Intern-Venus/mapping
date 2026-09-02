@@ -75,3 +75,14 @@ This matches the confirmed Product DNA and removes the landing/dashboard/inspect
 
 Note:
 The repository still needs a production OCR provider and durable D1/R2-style storage in a later backend slice. The current frontend flow keeps numbers confirmable and does not claim a real OCR backend exists.
+
+## 2026-09-01 - Simplicity Correction
+
+Decision:
+Ordinary user UI should be sheet-first, not dashboard-first or panel-first.
+
+Reason:
+The owner rejected the first implementation pass because visual simplicity was still not visible. The user surface should look and behave like a compact daily log sheet: unit/date, boiler row, autoclave row, sign, save.
+
+Implementation note:
+Remove heavy intro panels, separate unit-selection screens, KPI-style summary blocks, decorative shells, and extra report columns from the ordinary daily workflow. Admin screens may keep navigation and filters, but reports should preserve the confirmed sheet column order.
